@@ -5,9 +5,27 @@ library(ggplot2)
 library(scatterpie)
 library(ggrepel)
 library(viridis)
-setwd("/media/huijieqiao/SSD_Fast/monkeypox/monkeypox")
-
-regions_shp<-read_sf("../Shape/TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp")
+sf_use_s2(FALSE)
+setwd("/media/huijieqiao/WD10T_12/monkeypox/monkeypox")
+if (F){
+  #Fix ios3 columns
+  regions_shp<-read_sf("../Shape/World/country.shp")
+  world2<-read_sf("../Shape/TM_WORLD_BORDERS-0.3/TM_WORLD_BORDERS-0.3.shp")
+  regions_shp$ISO3<-""
+  regions_dt<-data.table(NAME=regions_shp$NAME, WB_CNTRY=regions_shp$WB_CNTRY, ID=c(1:nrow(regions_shp)))
+  world2_dt<-data.table(NAME=world2$NAME, ISO3=world2$ISO3)
+  regions_dt<-merge(regions_dt, world2_dt, by.x="NAME", by.y="NAME", all.x=T, all.y=F)
+  setorder(regions_dt, ID)
+  regions_dt[is.na(ISO3)]<-regions_dt[is.na(ISO3)]$WB_CNTRY
+  regions_shp$ISO3<-regions_dt$ISO3
+  
+  regions_shp[which(regions_shp$WB_CNTRY!=regions_shp$ISO3),]
+  lls<-data.table(st_coordinates(st_centroid(regions_shp)))
+  regions_shp$LON<-lls$X
+  regions_shp$LAT<-lls$Y
+  write_sf(regions_shp, "../Shape/World/country_fixed.shp")
+}
+regions_shp<-read_sf("../Shape/World/country_fixed.shp")
 iso3<-unique(regions_shp$ISO3)[1]
 df<-fread("../Data/latest_20220824.csv")
 
@@ -69,11 +87,14 @@ df_date[Travel_history_country=="Netherlands and Spain"]$Travel_history_country<
 df_date<-rbind(df_date, item1)
 
 
-
+regions_shp[which(regions_shp$NAME=="Taiwan"),]
 df_date[(Travel_history_country!="")&(!(Travel_history_country %in% regions_shp$NAME))]
 df_date[(Travel_history_country!="")&((Travel_history_country %in% regions_shp$NAME))]
+df_date[Country=="Taiwan"]$Country_ISO3<-"CHN"
+df_date[Country=="Taiwan"]$Country<-"China"
 
 df_date[!(Country_ISO3 %in% regions_shp$ISO3)]
+
 regions_shp[which(regions_shp$NAME=="Netherlands"),]
 
 df_date$day_of_week<-wday(df_date$confirmation_date)
@@ -135,8 +156,9 @@ local_cases_figure[is.na(N_month)]$N_month<-0
 colnames(local_cases_figure)[9]<-"Aug"
 saveRDS(local_cases_figure, "../Tables/local_cases_figure.rda")
 world <- map_data('world')
-p<-ggplot(world, aes(long, lat)) +
-  geom_map(map=world, aes(map_id=region), fill=NA, color="black", size=0.1) +
+world <- read_sf("../Shape/World/country.shp")
+p<-ggplot() +
+  geom_sf(data=world, fill=NA, color="black", linewidth=0.1) +
   #coord_quickmap()+
   geom_scatterpie(aes(x=LON, y=LAT, r=log10(N)),
                   data=local_cases_figure, cols=c("May", "Jun", "Jul", "Aug"), 
@@ -150,7 +172,7 @@ p<-ggplot(world, aes(long, lat)) +
         axis.ticks = element_blank())+
   labs(title = "Number of cases per country and region",
        fill = NULL) +
-  coord_fixed() +
+  coord_sf() +
   scale_fill_manual(
     breaks = c("May", "Jun", "Jul", "Aug"),
     labels = c("May", "June", "July", "August"),
@@ -208,8 +230,8 @@ saveRDS(imported_cases_se, "../Tables/imported_cases_se.rda")
 imported_cases_N<-imported_cases_se[, .(N=.N), by=list(Travel_history_country, Travel_LON, Travel_LAT)]
 saveRDS(imported_cases_N, "../Tables/imported_cases_N.rda")
 
-p<-ggplot(world, aes(long, lat)) +
-  geom_map(map=world, aes(map_id=region), fill=NA, color="black", size=0.1) +
+p<-ggplot() +
+  geom_sf(data=world, fill=NA, color="black", size=0.1) +
   geom_curve(data=imported_cases_se, aes(x = Travel_LON, y = Travel_LAT, 
                                          xend = LON, yend = LAT, color=factor(N)), 
              curvature = .2, size=0.3,
@@ -225,7 +247,7 @@ p<-ggplot(world, aes(long, lat)) +
   labs(title = "Imported pathways",
        color="N cases") +
   theme_bw()+
-  coord_fixed() +
+  coord_sf() +
   theme(panel.grid = element_blank(),
         panel.border = element_blank(),
         axis.title = element_blank(),
@@ -237,8 +259,8 @@ ggsave(p, filename="../Figures/Imported_Cases_Map/imported_cases_map.png", width
 saveRDS(imported_cases_se, "../Figures/Imported_Cases_Map/imported_cases_se.rda")
 
 
-p<-ggplot(world, aes(long, lat)) +
-  geom_map(map=world, aes(map_id=region), fill=NA, color="black", size=0.1) +
+p<-ggplot() +
+  geom_sf(data=world, fill=NA, color="black", size=0.1) +
   geom_curve(data=imported_cases_se, aes(x = Travel_LON, y = Travel_LAT, 
                                          xend = LON, yend = LAT, color=factor(N)), 
              curvature = .2, size=0.2,
@@ -256,7 +278,7 @@ p<-ggplot(world, aes(long, lat)) +
   labs(title = "Imported pathways",
        color="N cases") +
   theme_bw()+
-  coord_fixed() +
+  coord_sf() +
   theme(panel.grid = element_blank(),
         panel.border = element_blank(),
         axis.title = element_blank(),
@@ -269,8 +291,8 @@ ggsave(p, filename="../Figures/Imported_Cases_Map/imported_cases_map_big.png", w
 imported_cases_se_spain<-imported_cases_se[Travel_history_country=="Spain"|NAME=="Spain"]
 imported_cases_se_spain$in_out<-"Import"
 imported_cases_se_spain[Travel_history_country=="Spain"]$in_out<-"Export"
-p<-ggplot(world, aes(long, lat)) +
-  geom_map(map=world, aes(map_id=region), fill=NA, color="black", size=0.1) +
+p<-ggplot() +
+  geom_sf(data=world, fill=NA, color="black", size=0.1) +
   geom_curve(data=imported_cases_se_spain, aes(x = Travel_LON, y = Travel_LAT, 
                                          xend = LON, yend = LAT, color=in_out), 
              curvature = .2, size=0.3,
@@ -284,7 +306,7 @@ p<-ggplot(world, aes(long, lat)) +
   labs(title = "Spain",
        color="") +
   theme_bw()+
-  coord_fixed() +
+  coord_sf() +
   theme(panel.grid = element_blank(),
         panel.border = element_blank(),
         axis.title = element_blank(),
@@ -297,8 +319,8 @@ ggsave(p, filename="../Figures/Imported_Cases_Map/imported_cases_map_spain.png",
 imported_cases_se_spain<-imported_cases_se[Travel_history_country=="United States"|NAME=="United States"]
 imported_cases_se_spain$in_out<-"Import"
 imported_cases_se_spain[Travel_history_country=="United States"]$in_out<-"Export"
-p<-ggplot(world, aes(long, lat)) +
-  geom_map(map=world, aes(map_id=region), fill=NA, color="black", size=0.1) +
+p<-ggplot() +
+  geom_sf(data=world, fill=NA, color="black", size=0.1) +
   geom_curve(data=imported_cases_se_spain, aes(x = Travel_LON, y = Travel_LAT, 
                                                xend = LON, yend = LAT, color=in_out), 
              curvature = .2, size=0.3,
@@ -312,7 +334,7 @@ p<-ggplot(world, aes(long, lat)) +
   labs(title = "United States",
        color="") +
   theme_bw()+
-  coord_fixed() +
+  coord_sf() +
   theme(panel.grid = element_blank(),
         panel.border = element_blank(),
         axis.title = element_blank(),
@@ -325,8 +347,8 @@ ggsave(p, filename="../Figures/Imported_Cases_Map/imported_cases_map_usa.png", w
 imported_cases_se_spain<-imported_cases_se[Travel_history_country=="Germany"|NAME=="Germany"]
 imported_cases_se_spain$in_out<-"Import"
 imported_cases_se_spain[Travel_history_country=="Germany"]$in_out<-"Export"
-p<-ggplot(world, aes(long, lat)) +
-  geom_map(map=world, aes(map_id=region), fill=NA, color="black", size=0.1) +
+p<-ggplot() +
+  geom_sf(data=world, fill=NA, color="black", size=0.1) +
   geom_curve(data=imported_cases_se_spain, aes(x = Travel_LON, y = Travel_LAT, 
                                                xend = LON, yend = LAT, color=in_out), 
              curvature = .2, size=0.3,
@@ -340,7 +362,7 @@ p<-ggplot(world, aes(long, lat)) +
   labs(title = "Germany",
        color="") +
   theme_bw()+
-  coord_fixed() +
+  coord_sf() +
   theme(panel.grid = element_blank(),
         panel.border = element_blank(),
         axis.title = element_blank(),
@@ -354,8 +376,8 @@ ggsave(p, filename="../Figures/Imported_Cases_Map/imported_cases_map_germany.png
 imported_cases_se_spain<-imported_cases_se[Travel_history_country=="Portugal"|NAME=="Portugal"]
 imported_cases_se_spain$in_out<-"Import"
 imported_cases_se_spain[Travel_history_country=="Portugal"]$in_out<-"Export"
-p<-ggplot(world, aes(long, lat)) +
-  geom_map(map=world, aes(map_id=region), fill=NA, color="black", size=0.1) +
+p<-ggplot() +
+  geom_sf(data=world, fill=NA, color="black", size=0.1) +
   geom_curve(data=imported_cases_se_spain, aes(x = Travel_LON, y = Travel_LAT, 
                                                xend = LON, yend = LAT, color=in_out), 
              curvature = .2, size=0.3,
@@ -369,7 +391,7 @@ p<-ggplot(world, aes(long, lat)) +
   labs(title = "Portugal",
        color="") +
   theme_bw()+
-  coord_fixed() +
+  coord_sf() +
   theme(panel.grid = element_blank(),
         panel.border = element_blank(),
         axis.title = element_blank(),

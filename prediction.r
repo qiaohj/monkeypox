@@ -70,7 +70,6 @@ countries_predicted<-merge(countries_merc, data_predicted, by.x="ISO3", by.y="de
 
 countries_predicted$predicted_cases_2019<-countries_predicted$predicted_cases_2019^2
 countries_predicted$predicted_cases_2022<-countries_predicted$predicted_cases_2022^2
-
 p_2022<-ggplot() + 
   geom_sf(data=countries_predicted, aes(fill=predicted_cases_2022), inherit.aes = FALSE)+
   coord_sf()+
@@ -85,8 +84,10 @@ p_2019<-ggplot() +
   scale_fill_gradient(high="#FF3333", low="#ffe0e0")+
   labs(fill="N cases")+
   theme_bw()
-
+p_2019
 ggsave(p_2019, filename="../Figures/Prediction/2019_flight_based_prediction.pdf", width=6, height=4)
+
+
 
 countries_predicted$differ<-countries_predicted$predicted_cases_2019-countries_predicted$predicted_cases_2022
 countries_predicted[which(countries_predicted$differ<=0), "differ"]<-0
@@ -101,3 +102,28 @@ p_diff
 ggsave(p_diff, filename="../Figures/Prediction/prediction_differ.pdf", width=6, height=4)
 
 
+
+
+cols<-c("predicted_cases_2019", "geometry", "differ", "NAME")
+countries_predicted_2019<-countries_predicted[, cols]
+countries_predicted_2019$year<-"2019 based prediction"
+colnames(countries_predicted_2019)[1]<-"N"
+
+cols<-c("predicted_cases_2022", "geometry", "differ", "NAME")
+countries_predicted_2022<-countries_predicted[, cols]
+countries_predicted_2022$year<-"2022 based prediction"
+colnames(countries_predicted_2022)[1]<-"N"
+countries_predicted_df<-rbind(countries_predicted_2022, countries_predicted_2019)
+countries_predicted_df[which(countries_predicted_df$NAME=="Russia"),]
+countries_predicted_df$year<-factor(countries_predicted_df$year, 
+                                    levels=c("2022 based prediction", "2019 based prediction"))
+p_diff<-ggplot() + 
+  geom_sf(data=countries_predicted_df, 
+          aes(fill=N), inherit.aes = FALSE)+
+  coord_sf()+
+  scale_fill_gradient2(high="#FF3333", mid="white", low="#0072B2", midpoint=0)+
+  labs(fill="N cases")+
+  theme_bw()+
+  facet_wrap(~year)
+p_diff
+ggsave(p_diff, filename="../Figures/Prediction/prediction_combined.pdf", width=10, height=8)

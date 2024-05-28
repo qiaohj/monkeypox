@@ -1,10 +1,10 @@
-
 library(data.table)
 library(ggplot2)
 library(sf)
 library(ggmap)
-setwd("/media/huijieqiao/SSD_Fast/monkeypox/monkeypox")
+setwd("/media/huijieqiao/WD10T_12/monkeypox/monkeypox")
 world <- map_data('world')
+world <- read_sf("../Shape/World/country.shp")
 map<-readRDS("../Data/background.rda")
 imported_cases_se<-readRDS("../Tables/imported_cases_se.rda")
 p<-ggplot()+#ggmap(map, darken = c(0.5, "white")) +
@@ -34,5 +34,5 @@ p
 ggsave(p, filename="../Figures/Imported_Cases_Map/imported_cases_map_background.pdf", width=9, height=6)
 ggsave(p, filename="../Figures/Imported_Cases_Map/imported_cases_map_pathonly.pdf", width=9, height=6)
 
-ggsave(p, filename="../Figures/Imported_Cases_Map/imported_cases_map.png", width=9, height=6)
-ggsave(p, filename="../Figures/Imported_Cases_Map/imported_cases_map.pdf", width=9, height=6)
+#ggsave(p, filename="../Figures/Imported_Cases_Map/imported_cases_map.png", width=9, height=6)
+#ggsave(p, filename="../Figures/Imported_Cases_Map/imported_cases_map.pdf", width=9, height=6)
